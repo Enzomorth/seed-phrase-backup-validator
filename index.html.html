@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>BIP39 – Seed Phrase Backup Validator</title>
+
+<!-- 
+ Let us not become weary in doing good, 
+ for at the proper time we will reap a harvest 
+ if we do not give up. 
+ Galatians 6:9 
+ -->
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #c3c3c3;
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  color: #111;
+}
+
+.app {
+  background: #8e9297;
+  padding: 24px 28px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.12);
+  width: 100%;
+  max-width: 1400px;
+  min-height: 675px;
+
+  /* 🔹 FLEX PRINCIPAL */
+  display: flex;
+  gap: 24px;
+}
+
+/* ===== COLUNAS ===== */
+.main-column {
+  flex: 0 0 80%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+
+
+/* ===== HEADER ===== */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #ebebeb;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  padding: 0 17px;
+}
+
+.controls {
+  display: flex;
+  gap: 8px;
+}
+
+select {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+/* ===== CONTEÚDO CENTRAL ===== */
+
+
+.grid-wrapper {
+  background: #ebebeb;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  overflow-x: auto;
+  flex: 1;
+}
+
+.grid-wrapper.check-result {
+    margin-top: 20px;
+    display: flex;
+    gap: 20px;
+}
+
+/* ===== TYNESEED ===== */
+.tyneseed-wrapper {
+  display: grid;
+  gap: 24px;
+  padding-bottom: 10px;
+}
+
+.tyneseed-wrapper.two {
+  grid-template-columns: auto auto;
+}
+
+.tyneseed-grid {
+  display: grid;
+  grid-template-columns: 40px repeat(12, 26px);
+  gap: 4px;
+}
+
+/* ===== STACKBIT ===== */
+.stackbit-wrapper {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px 20px;
+}
+
+.stackbit-column {
+  display: grid;
+  grid-template-columns: 20px repeat(7, 27px);
+}
+
+/* ===== CELLS ===== */
+.cell {
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+  border: 1px solid #bbb;
+  background: #f3f4f6;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  user-select: none;
+}
+
+.cell-6, .cell-5, .cell-1, .cell-2 {
+  background-color: #dadada;
+}
+
+.cell.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.cell.disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.top-label {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.side-label,
+.word-label {
+  font-weight: 600;
+  font-size: 11px;
+  text-align: right;
+  padding-right: 6px;
+  color: #374151;
+}
+
+/* ===== OUTPUT ===== */
+.output {
+  background: #fff;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+}
+
+.output h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+#output table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+
+#output thead th {
+  font-weight: 600;
+  color: #111827;
+  text-align: left;
+  white-space: nowrap;
+}
+
+#output tbody td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#output tbody tr:nth-child(even) {
+  background: #f3f4f6;
+}
+
+#output th.num,
+#output td.num {
+  width: 36px;
+  text-align: center;
+  color: #374151;
+}
+
+#output th.code,
+#output td.code {
+  width: 64px;
+  text-align: right;
+  color: #6b7280;
+}
+
+.seed-validation {
+    background-color: #b3fdbb;
+    padding: 1px 12px;
+    border-radius: 5px;
+    border: solid 1px #29c534;
+}
+.seed-validation.seed-error {
+    background-color: #ffbcbc;
+    border: 1px solid #f18c6f;
+}
+
+
+thead { border-bottom: 1px solid #eee; }
+tr { height: 20px; }
+
+/* Overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  /* Fading */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+/* Modal box */
+.modal {
+  background: #fff;
+  padding: 20px 24px;
+  border-radius: 8px;
+  max-width: 1300px;
+  width: 100%;
+
+  /* Zoom suave */
+  transform: scale(0.95);
+  transition: transform 0.3s ease;
+}
+
+.modal h2 {
+    padding: 0 0;
+    margin: 0;
+}
+
+/* Ativo */
+.modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-overlay.active .modal {
+  transform: scale(1);
+}
+
+</style>
+
+<body>
+<div class="app">
+
+  <div class="main-column">
+    <div class="header">
+      <h2>Seed Phrase Backup Validator</h2>
+      <div class="controls">
+        <button id="openModal">Security Tips</button>
+        <select id="pattern">
+          <option value="tyneseed" selected>Tyneseed</option>
+          <option value="stackbit">Stackbit</option>
+        </select>
+        <select id="wordCount">
+          <option value="12" selected>12 words</option>
+          <option value="24">24 words</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="grid-wrapper">
+        <div id="grid"></div>
+        
+      </div>
+      <div class="grid-wrapper check-result">
+          <button onclick="getMnemonic()">Validate Seed Phrase</button>
+          <div id="checksum-result"></div>
+        </div>
+      
+    </div>
+  </div>
+
+  <div class="side-column">
+    <div class="output">
+      <div id="output"></div>
+    </div>
+  </div>
+
+  <div id="modalOverlay" class="modal-overlay">
+  <div class="modal">
+      <h2> Security Tips </h2>
+      <p>1 - Never generate, test, or validate your seed phrase on a device connected to the internet.</p>
+      <p>2 - This page can be downloaded and used completely offline (right-click to save).</p>
+      <p>3 - Do not use your main operating system to test backups; prefer an amnesic system such as Tails OS.</p>
+      <p>4 - Never take photos, screenshots, or store your seed phrase in any digital format (files, cloud, email).</p>
+      <p>5 - Never print your seed phrase, as printers may store it in memory even after printing.</p>
+      <p>6 - Avoid typing your seed phrase on shared devices or devices with an unknown usage history.</p>
+      <p>7 - Prefer open-source software that is widely audited and obtained from official sources.</p>
+      <p>8 - Create more than one physical backup of your seed phrase and store them in separate, secure locations.</p>
+      <p>9 - Any website, application, or person asking for your seed phrase is attempting a scam.</p>
+      <p>10 - Add an easy-to-remember passphrase to your wallet with 16 or more characters and store it separately from your seed phrase.</p>
+      <p>11 - If your seed phrase is ever exposed, consider it compromised and move your funds immediately.</p>
+      <p>12 - Don't Trust, Verify.</p>
+    <hr/>
+    <button id="closeModal">Close</button>
+  </div>
+</div>
+
+</div>
+</body>
+
+
+<script>
+// ===== WORDLIST =====
+const wordlist = [
+  "abandon","ability","able","about","above","absent","absorb","abstract","absurd","abuse",
+  "access","accident","account","accuse","achieve","acid","acoustic","acquire","across","act",
+  "action","actor","actress","actual","adapt","add","addict","address","adjust","admit",
+  "adult","advance","advice","aerobic","affair","afford","afraid","again","age","agent",
+  "agree","ahead","aim","air","airport","aisle","alarm","album","alcohol","alert",
+  "alien","all","alley","allow","almost","alone","alpha","already","also","alter",
+  "always","amateur","amazing","among","amount","amused","analyst","anchor","ancient","anger",
+  "angle","angry","animal","ankle","announce","annual","another","answer","antenna","antique",
+  "anxiety","any","apart","apology","appear","apple","approve","april","arch","arctic",
+  "area","arena","argue","arm","armed","armor","army","around","arrange","arrest",
+  "arrive","arrow","art","artefact","artist","artwork","ask","aspect","assault","asset",
+  "assist","assume","asthma","athlete","atom","attack","attend","attitude","attract","auction",
+  "audit","august","aunt","author","auto","autumn","average","avocado","avoid","awake",
+  "aware","away","awesome","awful","awkward","axis","baby","bachelor","bacon","badge",
+  "bag","balance","balcony","ball","bamboo","banana","banner","bar","barely","bargain",
+  "barrel","base","basic","basket","battle","beach","bean","beauty","because","become",
+  "beef","before","begin","behave","behind","believe","below","belt","bench","benefit",
+  "best","betray","better","between","beyond","bicycle","bid","bike","bind","biology",
+  "bird","birth","bitter","black","blade","blame","blanket","blast","bleak","bless",
+  "blind","blood","blossom","blouse","blue","blur","blush","board","boat","body",
+  "boil","bomb","bone","bonus","book","boost","border","boring","borrow","boss",
+  "bottom","bounce","box","boy","bracket","brain","brand","brass","brave","bread",
+  "breeze","brick","bridge","brief","bright","bring","brisk","broccoli","broken","bronze",
+  "broom","brother","brown","brush","bubble","buddy","budget","buffalo","build","bulb",
+  "bulk","bullet","bundle","bunker","burden","burger","burst","bus","business","busy",
+  "butter","buyer","buzz","cabbage","cabin","cable","cactus","cage","cake","call",
+  "calm","camera","camp","can","canal","cancel","candy","cannon","canoe","canvas",
+  "canyon","capable","capital","captain","car","carbon","card","cargo","carpet","carry",
+  "cart","case","cash","casino","castle","casual","cat","catalog","catch","category",
+  "cattle","caught","cause","caution","cave","ceiling","celery","cement","census","century",
+  "cereal","certain","chair","chalk","champion","change","chaos","chapter","charge","chase",
+  "chat","cheap","check","cheese","chef","cherry","chest","chicken","chief","child",
+  "chimney","choice","choose","chronic","chuckle","chunk","churn","cigar","cinnamon","circle",
+  "citizen","city","civil","claim","clap","clarify","claw","clay","clean","clerk",
+  "clever","click","client","cliff","climb","clinic","clip","clock","clog","close",
+  "cloth","cloud","clown","club","clump","cluster","clutch","coach","coast","coconut",
+  "code","coffee","coil","coin","collect","color","column","combine","come","comfort",
+  "comic","common","company","concert","conduct","confirm","congress","connect","consider","control",
+  "convince","cook","cool","copper","copy","coral","core","corn","correct","cost",
+  "cotton","couch","country","couple","course","cousin","cover","coyote","crack","cradle",
+  "craft","cram","crane","crash","crater","crawl","crazy","cream","credit","creek",
+  "crew","cricket","crime","crisp","critic","crop","cross","crouch","crowd","crucial",
+  "cruel","cruise","crumble","crunch","crush","cry","crystal","cube","culture","cup",
+  "cupboard","curious","current","curtain","curve","cushion","custom","cute","cycle","dad",
+  "damage","damp","dance","danger","daring","dash","daughter","dawn","day","deal",
+  "debate","debris","decade","december","decide","decline","decorate","decrease","deer","defense",
+  "define","defy","degree","delay","deliver","demand","demise","denial","dentist","deny",
+  "depart","depend","deposit","depth","deputy","derive","describe","desert","design","desk",
+  "despair","destroy","detail","detect","develop","device","devote","diagram","dial","diamond",
+  "diary","dice","diesel","diet","differ","digital","dignity","dilemma","dinner","dinosaur",
+  "direct","dirt","disagree","discover","disease","dish","dismiss","disorder","display","distance",
+  "divert","divide","divorce","dizzy","doctor","document","dog","doll","dolphin","domain",
+  "donate","donkey","donor","door","dose","double","dove","draft","dragon","drama",
+  "drastic","draw","dream","dress","drift","drill","drink","drip","drive","drop",
+  "drum","dry","duck","dumb","dune","during","dust","dutch","duty","dwarf",
+  "dynamic","eager","eagle","early","earn","earth","easily","east","easy","echo",
+  "ecology","economy","edge","edit","educate","effort","egg","eight","either","elbow",
+  "elder","electric","elegant","element","elephant","elevator","elite","else","embark","embody",
+  "embrace","emerge","emotion","employ","empower","empty","enable","enact","end","endless",
+  "endorse","enemy","energy","enforce","engage","engine","enhance","enjoy","enlist","enough",
+  "enrich","enroll","ensure","enter","entire","entry","envelope","episode","equal","equip",
+  "era","erase","erode","erosion","error","erupt","escape","essay","essence","estate",
+  "eternal","ethics","evidence","evil","evoke","evolve","exact","example","excess","exchange",
+  "excite","exclude","excuse","execute","exercise","exhaust","exhibit","exile","exist","exit",
+  "exotic","expand","expect","expire","explain","expose","express","extend","extra","eye",
+  "eyebrow","fabric","face","faculty","fade","faint","faith","fall","false","fame",
+  "family","famous","fan","fancy","fantasy","farm","fashion","fat","fatal","father",
+  "fatigue","fault","favorite","feature","february","federal","fee","feed","feel","female",
+  "fence","festival","fetch","fever","few","fiber","fiction","field","figure","file",
+  "film","filter","final","find","fine","finger","finish","fire","firm","first",
+  "fiscal","fish","fit","fitness","fix","flag","flame","flash","flat","flavor",
+  "flee","flight","flip","float","flock","floor","flower","fluid","flush","fly",
+  "foam","focus","fog","foil","fold","follow","food","foot","force","forest",
+  "forget","fork","fortune","forum","forward","fossil","foster","found","fox","fragile",
+  "frame","frequent","fresh","friend","fringe","frog","front","frost","frown","frozen",
+  "fruit","fuel","fun","funny","furnace","fury","future","gadget","gain","galaxy",
+  "gallery","game","gap","garage","garbage","garden","garlic","garment","gas","gasp",
+  "gate","gather","gauge","gaze","general","genius","genre","gentle","genuine","gesture",
+  "ghost","giant","gift","giggle","ginger","giraffe","girl","give","glad","glance",
+  "glare","glass","glide","glimpse","globe","gloom","glory","glove","glow","glue",
+  "goat","goddess","gold","good","goose","gorilla","gospel","gossip","govern","gown",
+  "grab","grace","grain","grant","grape","grass","gravity","great","green","grid",
+  "grief","grit","grocery","group","grow","grunt","guard","guess","guide","guilt",
+  "guitar","gun","gym","habit","hair","half","hammer","hamster","hand","happy",
+  "harbor","hard","harsh","harvest","hat","have","hawk","hazard","head","health",
+  "heart","heavy","hedgehog","height","hello","helmet","help","hen","hero","hidden",
+  "high","hill","hint","hip","hire","history","hobby","hockey","hold","hole",
+  "holiday","hollow","home","honey","hood","hope","horn","horror","horse","hospital",
+  "host","hotel","hour","hover","hub","huge","human","humble","humor","hundred",
+  "hungry","hunt","hurdle","hurry","hurt","husband","hybrid","ice","icon","idea",
+  "identify","idle","ignore","ill","illegal","illness","image","imitate","immense","immune",
+  "impact","impose","improve","impulse","inch","include","income","increase","index","indicate",
+  "indoor","industry","infant","inflict","inform","inhale","inherit","initial","inject","injury",
+  "inmate","inner","innocent","input","inquiry","insane","insect","inside","inspire","install",
+  "intact","interest","into","invest","invite","involve","iron","island","isolate","issue",
+  "item","ivory","jacket","jaguar","jar","jazz","jealous","jeans","jelly","jewel",
+  "job","join","joke","journey","joy","judge","juice","jump","jungle","junior",
+  "junk","just","kangaroo","keen","keep","ketchup","key","kick","kid","kidney",
+  "kind","kingdom","kiss","kit","kitchen","kite","kitten","kiwi","knee","knife",
+  "knock","know","lab","label","labor","ladder","lady","lake","lamp","language",
+  "laptop","large","later","latin","laugh","laundry","lava","law","lawn","lawsuit",
+  "layer","lazy","leader","leaf","learn","leave","lecture","left","leg","legal",
+  "legend","leisure","lemon","lend","length","lens","leopard","lesson","letter","level",
+  "liar","liberty","library","license","life","lift","light","like","limb","limit",
+  "link","lion","liquid","list","little","live","lizard","load","loan","lobster",
+  "local","lock","logic","lonely","long","loop","lottery","loud","lounge","love",
+  "loyal","lucky","luggage","lumber","lunar","lunch","luxury","lyrics","machine","mad",
+  "magic","magnet","maid","mail","main","major","make","mammal","man","manage",
+  "mandate","mango","mansion","manual","maple","marble","march","margin","marine","market",
+  "marriage","mask","mass","master","match","material","math","matrix","matter","maximum",
+  "maze","meadow","mean","measure","meat","mechanic","medal","media","melody","melt",
+  "member","memory","mention","menu","mercy","merge","merit","merry","mesh","message",
+  "metal","method","middle","midnight","milk","million","mimic","mind","minimum","minor",
+  "minute","miracle","mirror","misery","miss","mistake","mix","mixed","mixture","mobile",
+  "model","modify","mom","moment","monitor","monkey","monster","month","moon","moral",
+  "more","morning","mosquito","mother","motion","motor","mountain","mouse","move","movie",
+  "much","muffin","mule","multiply","muscle","museum","mushroom","music","must","mutual",
+  "myself","mystery","myth","naive","name","napkin","narrow","nasty","nation","nature",
+  "near","neck","need","negative","neglect","neither","nephew","nerve","nest","net",
+  "network","neutral","never","news","next","nice","night","noble","noise","nominee",
+  "noodle","normal","north","nose","notable","note","nothing","notice","novel","now",
+  "nuclear","number","nurse","nut","oak","obey","object","oblige","obscure","observe",
+  "obtain","obvious","occur","ocean","october","odor","off","offer","office","often",
+  "oil","okay","old","olive","olympic","omit","once","one","onion","online",
+  "only","open","opera","opinion","oppose","option","orange","orbit","orchard","order",
+  "ordinary","organ","orient","original","orphan","ostrich","other","outdoor","outer","output",
+  "outside","oval","oven","over","own","owner","oxygen","oyster","ozone","pact",
+  "paddle","page","pair","palace","palm","panda","panel","panic","panther","paper",
+  "parade","parent","park","parrot","party","pass","patch","path","patient","patrol",
+  "pattern","pause","pave","payment","peace","peanut","pear","peasant","pelican","pen",
+  "penalty","pencil","people","pepper","perfect","permit","person","pet","phone","photo",
+  "phrase","physical","piano","picnic","picture","piece","pig","pigeon","pill","pilot",
+  "pink","pioneer","pipe","pistol","pitch","pizza","place","planet","plastic","plate",
+  "play","please","pledge","pluck","plug","plunge","poem","poet","point","polar",
+  "pole","police","pond","pony","pool","popular","portion","position","possible","post",
+  "potato","pottery","poverty","powder","power","practice","praise","predict","prefer","prepare",
+  "present","pretty","prevent","price","pride","primary","print","priority","prison","private",
+  "prize","problem","process","produce","profit","program","project","promote","proof","property",
+  "prosper","protect","proud","provide","public","pudding","pull","pulp","pulse","pumpkin",
+  "punch","pupil","puppy","purchase","purity","purpose","purse","push","put","puzzle",
+  "pyramid","quality","quantum","quarter","question","quick","quit","quiz","quote","rabbit",
+  "raccoon","race","rack","radar","radio","rail","rain","raise","rally","ramp",
+  "ranch","random","range","rapid","rare","rate","rather","raven","raw","razor",
+  "ready","real","reason","rebel","rebuild","recall","receive","recipe","record","recycle",
+  "reduce","reflect","reform","refuse","region","regret","regular","reject","relax","release",
+  "relief","rely","remain","remember","remind","remove","render","renew","rent","reopen",
+  "repair","repeat","replace","report","require","rescue","resemble","resist","resource","response",
+  "result","retire","retreat","return","reunion","reveal","review","reward","rhythm","rib",
+  "ribbon","rice","rich","ride","ridge","rifle","right","rigid","ring","riot",
+  "ripple","risk","ritual","rival","river","road","roast","robot","robust","rocket",
+  "romance","roof","rookie","room","rose","rotate","rough","round","route","royal",
+  "rubber","rude","rug","rule","run","runway","rural","sad","saddle","sadness",
+  "safe","sail","salad","salmon","salon","salt","salute","same","sample","sand",
+  "satisfy","satoshi","sauce","sausage","save","say","scale","scan","scare","scatter",
+  "scene","scheme","school","science","scissors","scorpion","scout","scrap","screen","script",
+  "scrub","sea","search","season","seat","second","secret","section","security","seed",
+  "seek","segment","select","sell","seminar","senior","sense","sentence","series","service",
+  "session","settle","setup","seven","shadow","shaft","shallow","share","shed","shell",
+  "sheriff","shield","shift","shine","ship","shiver","shock","shoe","shoot","shop",
+  "short","shoulder","shove","shrimp","shrug","shuffle","shy","sibling","sick","side",
+  "siege","sight","sign","silent","silk","silly","silver","similar","simple","since",
+  "sing","siren","sister","situate","six","size","skate","sketch","ski","skill",
+  "skin","skirt","skull","slab","slam","sleep","slender","slice","slide","slight",
+  "slim","slogan","slot","slow","slush","small","smart","smile","smoke","smooth",
+  "snack","snake","snap","sniff","snow","soap","soccer","social","sock","soda",
+  "soft","solar","soldier","solid","solution","solve","someone","song","soon","sorry",
+  "sort","soul","sound","soup","source","south","space","spare","spatial","spawn",
+  "speak","special","speed","spell","spend","sphere","spice","spider","spike","spin",
+  "spirit","split","spoil","sponsor","spoon","sport","spot","spray","spread","spring",
+  "spy","square","squeeze","squirrel","stable","stadium","staff","stage","stairs","stamp",
+  "stand","start","state","stay","steak","steel","stem","step","stereo","stick",
+  "still","sting","stock","stomach","stone","stool","story","stove","strategy","street",
+  "strike","strong","struggle","student","stuff","stumble","style","subject","submit","subway",
+  "success","such","sudden","suffer","sugar","suggest","suit","summer","sun","sunny",
+  "sunset","super","supply","supreme","sure","surface","surge","surprise","surround","survey",
+  "suspect","sustain","swallow","swamp","swap","swarm","swear","sweet","swift","swim",
+  "swing","switch","sword","symbol","symptom","syrup","system","table","tackle","tag",
+  "tail","talent","talk","tank","tape","target","task","taste","tattoo","taxi",
+  "teach","team","tell","ten","tenant","tennis","tent","term","test","text",
+  "thank","that","theme","then","theory","there","they","thing","this","thought",
+  "three","thrive","throw","thumb","thunder","ticket","tide","tiger","tilt","timber",
+  "time","tiny","tip","tired","tissue","title","toast","tobacco","today","toddler",
+  "toe","together","toilet","token","tomato","tomorrow","tone","tongue","tonight","tool",
+  "tooth","top","topic","topple","torch","tornado","tortoise","toss","total","tourist",
+  "toward","tower","town","toy","track","trade","traffic","tragic","train","transfer",
+  "trap","trash","travel","tray","treat","tree","trend","trial","tribe","trick",
+  "trigger","trim","trip","trophy","trouble","truck","true","truly","trumpet","trust",
+  "truth","try","tube","tuition","tumble","tuna","tunnel","turkey","turn","turtle",
+  "twelve","twenty","twice","twin","twist","two","type","typical","ugly","umbrella",
+  "unable","unaware","uncle","uncover","under","undo","unfair","unfold","unhappy","uniform",
+  "unique","unit","universe","unknown","unlock","until","unusual","unveil","update","upgrade",
+  "uphold","upon","upper","upset","urban","urge","usage","use","used","useful",
+  "useless","usual","utility","vacant","vacuum","vague","valid","valley","valve","van",
+  "vanish","vapor","various","vast","vault","vehicle","velvet","vendor","venture","venue",
+  "verb","verify","version","very","vessel","veteran","viable","vibrant","vicious","victory",
+  "video","view","village","vintage","violin","virtual","virus","visa","visit","visual",
+  "vital","vivid","vocal","voice","void","volcano","volume","vote","voyage","wage",
+  "wagon","wait","walk","wall","walnut","want","warfare","warm","warrior","wash",
+  "wasp","waste","water","wave","way","wealth","weapon","wear","weasel","weather",
+  "web","wedding","weekend","weird","welcome","west","wet","whale","what","wheat",
+  "wheel","when","where","whip","whisper","wide","width","wife","wild","will",
+  "win","window","wine","wing","wink","winner","winter","wire","wisdom","wise",
+  "wish","witness","wolf","woman","wonder","wood","wool","word","work","world",
+  "worry","worth","wrap","wreck","wrestle","wrist","write","wrong","yard","year",
+  "yellow","you","young","youth","zebra","zero","zone","zoo"
+];
+
+// ===== STATE =====
+let currentPattern = "tyneseed";
+let wordsCount = 12;
+let gridState = [];
+
+// ===== TYNESEED =====
+const tyneseedBits = [2048,1024,512,256,128,64,32,16,8,4,2,1];
+
+function buildTyneseed() {
+  gridState = Array.from({length: wordsCount}, () => Array(12).fill(0));
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "tyneseed-wrapper" + (wordsCount === 24 ? " two" : "");
+
+  const ranges = wordsCount === 24 ? [[0,12],[12,24]] : [[0,wordsCount]];
+
+  ranges.forEach(([start,end]) => {
+    const g = document.createElement("div");
+    g.className = "tyneseed-grid";
+
+    g.appendChild(document.createElement("div"));
+    tyneseedBits.forEach(b => {
+      const d = document.createElement("div");
+      d.className = "top-label";
+      d.textContent = b;
+      g.appendChild(d);
+    });
+
+    for (let r = start; r < end; r++) {
+      const side = document.createElement("div");
+      side.className = "side-label";
+      side.textContent = r + 1;
+      g.appendChild(side);
+
+      for (let c = 0; c < 12; c++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.onclick = () => {
+          gridState[r][c] ^= 1;
+          cell.classList.toggle("active");
+          updateOutput();
+        };
+        g.appendChild(cell);
+      }
+    }
+    wrapper.appendChild(g);
+  });
+
+  grid.appendChild(wrapper);
+}
+
+// ===== STACKBIT =====
+const stackTop = [1,1,2,1,2,1,2];
+const stackBottom = [2,4,8,4,8,4,8];
+
+function buildStackbit() {
+  gridState = Array.from({length: wordsCount * 2}, () => Array(7).fill(0));
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  grid.className = "stackbit-wrapper";
+
+  const columnsCount = wordsCount === 24 ? 4 : 2;
+  const wordsPerColumn = wordsCount / columnsCount;
+
+  for (let col = 0; col < columnsCount; col++) {
+    const column = document.createElement("div");
+    column.className = "stackbit-column";
+
+    for (let i = 0; i < wordsPerColumn; i++) {
+      const w = col * wordsPerColumn + i;
+      const rTop = w * 2;
+      const rBot = rTop + 1;
+
+      const wl = document.createElement("div");
+      wl.className = "word-label";
+      wl.textContent = (w + 1).toString().padStart(2,"0");
+      column.appendChild(wl);
+
+      for (let c = 0; c < 7; c++) {
+        const cell = document.createElement("div");
+        cell.className = "cell cell-"+c;
+        cell.textContent = stackTop[c];
+        cell.dataset.row = rTop;
+        cell.dataset.col = c;
+        cell.onclick = toggleCell;
+        column.appendChild(cell);
+      }
+
+      const spacer = document.createElement("div");
+      spacer.style.height = "40px";
+      column.appendChild(spacer);
+
+      for (let c = 0; c < 7; c++) {
+        const cell = document.createElement("div");
+        cell.className = "cell cell-"+c;
+        cell.textContent = stackBottom[c];
+        cell.dataset.row = rBot;
+        cell.dataset.col = c;
+        cell.onclick = toggleCell;
+        column.appendChild(cell);
+      }
+    }
+    grid.appendChild(column);
+  }
+}
+
+function toggleCell(e) {
+  const cell = e.target;
+  if (cell.classList.contains("disabled")) return;
+  const r = +cell.dataset.row;
+  const c = +cell.dataset.col;
+  gridState[r][c] ^= 1;
+  cell.classList.toggle("active");
+  updateOutput();
+}
+
+// ===== STACKBIT VALIDATION =====
+function applyStackbitValidation() {
+  if (currentPattern !== "stackbit") return;
+
+  document.querySelectorAll(".cell").forEach(cell => {
+    if (!cell.dataset.row) return;
+
+    const r = +cell.dataset.row;
+    const c = +cell.dataset.col;
+    const w = Math.floor(r / 2);
+    const rTop = w * 2;
+    const rBot = rTop + 1;
+
+    const groups = [
+      { cols: [0], max: 2 },
+      { cols: [1,2], max: 9 },
+      { cols: [3,4], max: 9 },
+      { cols: [5,6], max: 9 }
+    ];
+
+    for (const g of groups) {
+      if (!g.cols.includes(c)) continue;
+
+      let sum = 0;
+      g.cols.forEach(x => {
+        if (gridState[rTop][x]) sum += stackTop[x];
+        if (gridState[rBot][x]) sum += stackBottom[x];
+      });
+
+      const value = (r === rTop ? stackTop[c] : stackBottom[c]);
+      const disabled = !gridState[r][c] && (sum + value > g.max);
+      cell.classList.toggle("disabled", disabled);
+    }
+  });
+}
+
+// ===== OUTPUT (ORIGINAL) =====
+function updateOutput() {
+  const output = document.getElementById("output");
+  output.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th class="num">#</th>
+          <th>Selected Word</th>
+          <th class="code">Code</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  `;
+
+  const tbody = output.querySelector("tbody");
+
+  if (currentPattern === "tyneseed") {
+    for (let r = 0; r < wordsCount; r++) {
+      let v = -1;
+      for (let c = 0; c < 12; c++) {
+        if (gridState[r][c]) v += tyneseedBits[c];
+      }
+      const word = wordlist[v] || "";
+      const invalid = v < 0 || !word;
+
+      tbody.insertAdjacentHTML("beforeend", `
+        <tr>
+          <td class="num">${r+1}</td>
+          <td id="word-${r+1}" value="${word}">${word}${invalid ? '<span class="badge-invalid"> </span>' : ''}</td>
+          <td class="code">${v+1}</td>
+        </tr>
+      `);
+    }
+  } else {
+    for (let w = 0; w < wordsCount; w++) {
+      const r = w * 2;
+      let t=0,h=0,d=0,u=0;
+
+      if (gridState[r][0]) t+=1;
+      if (gridState[r+1][0]) t+=2;
+
+      [1,2].forEach(c=>{
+        if (gridState[r][c]) h+=stackTop[c];
+        if (gridState[r+1][c]) h+=stackBottom[c];
+      });
+      [3,4].forEach(c=>{
+        if (gridState[r][c]) d+=stackTop[c];
+        if (gridState[r+1][c]) d+=stackBottom[c];
+      });
+      [5,6].forEach(c=>{
+        if (gridState[r][c]) u+=stackTop[c];
+        if (gridState[r+1][c]) u+=stackBottom[c];
+      });
+
+      const idx = `${t}${h}${d}${u}`;
+      const word = wordlist[+idx-1] || "";
+      const invalid = !word;
+
+      tbody.insertAdjacentHTML("beforeend", `
+        <tr>
+          <td class="num">${w+1}</td>
+          <td id="word-${r+1}" value="${word}">${word}${invalid ? '<span class="badge-invalid"> </span>' : ''}</td>
+          <td class="code">${idx}</td>
+        </tr>
+      `);
+    }
+    applyStackbitValidation();
+  }
+}
+
+// ===== EVENTS =====
+pattern.onchange = e => {
+  currentPattern = e.target.value;
+  currentPattern === "tyneseed" ? buildTyneseed() : buildStackbit();
+  updateOutput();
+  clearChecksum();
+};
+
+wordCount.onchange = e => {
+  wordsCount = +e.target.value;
+  currentPattern === "tyneseed" ? buildTyneseed() : buildStackbit();
+  updateOutput();
+  clearChecksum();
+};
+
+// INIT
+buildTyneseed();
+updateOutput();
+
+
+//Checksum
+
+
+// Lookup rápido
+const wordToIndex = new Map(wordlist.map((word, i) => [word, i]));
+
+// ==============================
+// Validação de checksum BIP39
+// ==============================
+async function validateMnemonicChecksum(mnemonic) {
+    try {
+        const words = mnemonic.trim().toLowerCase().split(/\s+/);
+        const wordCount = words.length;
+
+        if (wordsCount > wordCount) {
+            return { valid: false, reason: "<span class='seed-validation seed-error'>Invalid number of selected words! &#10060</span>" };
+        }
+
+        // Converte palavras → índices → bits
+        let bits = '';
+        for (const word of words) {
+            const index = wordToIndex.get(word);
+            if (index === undefined) {
+                return { valid: false, reason: `Invalid word: ${word}` };
+            }
+            bits += index.toString(2).padStart(11, '0');
+        }
+
+        const CS = wordCount / 3;                 // checksum bits
+        const ENT = bits.length - CS;             // entropy bits
+
+        const entropyBits = bits.slice(0, ENT);
+        const checksumBits = bits.slice(ENT);
+
+        // Converte entropia para bytes
+        const entropyBytes = new Uint8Array(ENT / 8);
+        for (let i = 0; i < entropyBytes.length; i++) {
+            entropyBytes[i] = parseInt(entropyBits.slice(i * 8, i * 8 + 8), 2);
+        }
+
+        // SHA256(entropy)
+        const hashBuffer = await crypto.subtle.digest('SHA-256', entropyBytes);
+        const hashBits = Array.from(new Uint8Array(hashBuffer))
+            .map(b => b.toString(2).padStart(8, '0'))
+            .join('');
+
+        const calculatedChecksum = hashBits.slice(0, CS);
+
+        const isValid = calculatedChecksum === checksumBits;
+        const seedSuccess = "<span class='seed-validation'>Seed phrase validated successfully! &#x2714;</span>";
+        const seedError = "<span class='seed-validation seed-error'>Warning: Invalid Seed phrase! &#10060</span>";
+        return {
+            valid: isValid,
+            reason: isValid ? seedSuccess : seedError,
+            entropyBits,
+            checksumBits,
+            calculatedChecksum
+        };
+
+    } catch (err) {
+        return { valid: false, reason: "Erro ao processar: " + err.message };
+    }
+}
+
+async function clearChecksum() {
+  document.getElementById("checksum-result").innerHTML = "";
+}
+
+
+// ==============================
+//  Invoca funções validação
+// ==============================
+async function getMnemonic() {
+    let mnemonic = '';
+
+    const cells = document.querySelectorAll('td[id^="word-"]');
+
+    cells.forEach((td, index) => {
+        const value = td.getAttribute('value') || td.textContent.trim();
+        mnemonic += index === 0 ? value : ' ' + value;
+    });
+
+    const result = await validateMnemonicChecksum(mnemonic);
+      console.log(result);
+      document.getElementById("checksum-result").innerHTML = result.reason;
+      
+    return {
+        mnemonic,
+        result
+    };
+}
+
+
+
+//=== MODAL
+const openBtn = document.getElementById("openModal");
+const closeBtn = document.getElementById("closeModal");
+const modal = document.getElementById("modalOverlay");
+
+openBtn.addEventListener("click", () => {
+  modal.classList.add("active");
+});
+
+closeBtn.addEventListener("click", () => {
+  modal.classList.remove("active");
+});
+
+// Fechar clicando fora do modal
+modal.addEventListener("click", (e) => {
+  if (e.target === modal) {
+    modal.classList.remove("active");
+  }
+});
+
+
+</script>
+</body>
+</html>
